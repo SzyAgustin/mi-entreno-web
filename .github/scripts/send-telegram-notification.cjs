@@ -289,11 +289,22 @@ const main = async () => {
   }
 
   // Seleccionar frase aleatoria
-  const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+  const randomIndex = Math.floor(Math.random() * phrases.length);
+  const randomPhrase = phrases[randomIndex];
+  
+  console.log(`Índice seleccionado: ${randomIndex}`);
+  console.log(`Frase seleccionada: "${randomPhrase}"`);
+  console.log(`Tipo de dato: ${typeof randomPhrase}`);
+  console.log(`Longitud: ${randomPhrase ? randomPhrase.length : 0}`);
+  
+  if (!randomPhrase || randomPhrase.trim().length === 0) {
+    console.error('Error: La frase seleccionada está vacía');
+    process.exit(1);
+  }
   
   try {
     await sendMessage(randomPhrase);
-    console.log(`Notificación enviada: ${randomPhrase}`);
+    console.log(`✅ Notificación enviada correctamente: ${randomPhrase}`);
   } catch (error) {
     console.error('Error al enviar notificación:', error);
     process.exit(1);
