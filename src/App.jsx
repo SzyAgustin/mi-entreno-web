@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import { db } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Componente de Calendario Web
 const WebCalendar = ({ markedDates, onDayPress }) => {
@@ -99,24 +101,72 @@ const WebCalendar = ({ markedDates, onDayPress }) => {
 function App() {
   const [currentScreen, setCurrentScreen] = useState('Calendar');
   const [selectedDate, setSelectedDate] = useState(null);
-  const [completedDays, setCompletedDays] = useState(() => {
-    try {
-      const saved = localStorage.getItem('completedDays');
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      console.error('Error loading data:', e);
-      return {};
-    }
-  });
+  const [completedDays, setCompletedDays] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [useFirebase, setUseFirebase] = useState(true);
 
-  // Guardar en localStorage cuando cambien los días completados
+  // Cargar datos desde Firestore al iniciar
   useEffect(() => {
-    try {
-      localStorage.setItem('completedDays', JSON.stringify(completedDays));
-    } catch (e) {
-      console.error('Error saving data:', e);
-    }
-  }, [completedDays]);
+    const loadData = async () => {
+      try {
+        // Intentar cargar desde Firestore
+        const docRef = doc(db, 'completedDays', 'user_default');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setCompletedDays(docSnap.data().days || {});
+          console.log('Datos cargados desde Firebase');
+        } else {
+          // Si no hay datos en Firestore, intentar migrar desde localStorage
+          const saved = localStorage.getItem('completedDays');
+          if (saved) {
+            const localData = JSON.parse(saved);
+            setCompletedDays(localData);
+            // Guardar en Firestore inmediatamente
+            await setDoc(docRef, { days: localData });
+            console.log('Datos migrados de localStorage a Firebase');
+          }
+        }
+        setIsLoading(false);
+      } catch (e) {
+        console.error('Error loading from Firebase, using localStorage:', e);
+        // Fallback a localStorage si Firebase falla
+        setUseFirebase(false);
+        try {
+          const saved = localStorage.getItem('completedDays');
+          setCompletedDays(saved ? JSON.parse(saved) : {});
+        } catch (localError) {
+          console.error('Error loading from localStorage:', localError);
+        }
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Guardar en Firestore cuando cambien los días completados
+  useEffect(() => {
+    if (isLoading) return; // No guardar durante la carga inicial
+
+    const saveData = async () => {
+      try {
+        if (useFirebase) {
+          const docRef = doc(db, 'completedDays', 'user_default');
+          await setDoc(docRef, { days: completedDays });
+          console.log('Datos guardados en Firebase');
+        }
+        // Siempre guardar en localStorage como backup
+        localStorage.setItem('completedDays', JSON.stringify(completedDays));
+      } catch (e) {
+        console.error('Error saving to Firebase, saved to localStorage:', e);
+        // Fallback a localStorage
+        localStorage.setItem('completedDays', JSON.stringify(completedDays));
+      }
+    };
+
+    saveData();
+  }, [completedDays, isLoading, useFirebase]);
 
   // Funciones auxiliares para manejo de fechas
   const formatDate = (date) => {
@@ -424,6 +474,25 @@ function App() {
     setCurrentScreen('Calendar');
     setSelectedDate(null);
   };
+
+  // Pantalla de carga
+  if (isLoading) {
+    return (
+      <div className="app">
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          flexDirection: 'column',
+          gap: '20px'
+        }}>
+          <div style={{ fontSize: '48px' }}>🏋️</div>
+          <h2 style={{ color: '#fff' }}>Cargando...</h2>
+        </div>
+      </div>
+    );
+  }
 
   // Pantalla de Calendario
   if (currentScreen === 'Calendar') {
