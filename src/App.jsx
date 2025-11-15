@@ -467,6 +467,8 @@ function App() {
         data: trainingData
       });
       setCurrentScreen('WorkoutDetail');
+      // Agregar entrada al historial del navegador
+      window.history.pushState({ screen: 'WorkoutDetail' }, '', '');
     }
   };
 
@@ -474,6 +476,22 @@ function App() {
     setCurrentScreen('Calendar');
     setSelectedDate(null);
   };
+
+  // Manejar el botón "atrás" del navegador
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // Cuando el usuario presiona "atrás", volver al calendario
+      if (currentScreen === 'WorkoutDetail') {
+        goBack();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [currentScreen]);
 
   // Pantalla de error
   if (error) {
