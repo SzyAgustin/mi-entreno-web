@@ -103,41 +103,43 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [completedDays, setCompletedDays] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [useFirebase, setUseFirebase] = useState(true);
+  const [error, setError] = useState(null);
 
   // Cargar datos desde Firestore al iniciar
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Intentar cargar desde Firestore
+        console.log('🔥 Intentando conectar a Firebase...');
+        console.log('📝 Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+        
         const docRef = doc(db, 'completedDays', 'user_default');
-        const docSnap = await getDoc(docRef);
+        
+        // Timeout de 10 segundos
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout: La conexión tardó demasiado')), 10000)
+        );
+        
+        const docSnap = await Promise.race([
+          getDoc(docRef),
+          timeoutPromise
+        ]);
         
         if (docSnap.exists()) {
           setCompletedDays(docSnap.data().days || {});
-          console.log('Datos cargados desde Firebase');
+          console.log('✅ Datos cargados desde Firebase exitosamente');
         } else {
-          // Si no hay datos en Firestore, intentar migrar desde localStorage
-          const saved = localStorage.getItem('completedDays');
-          if (saved) {
-            const localData = JSON.parse(saved);
-            setCompletedDays(localData);
-            // Guardar en Firestore inmediatamente
-            await setDoc(docRef, { days: localData });
-            console.log('Datos migrados de localStorage a Firebase');
-          }
+          console.log('📭 No hay datos en Firebase, iniciando con datos vacíos');
+          setCompletedDays({});
         }
         setIsLoading(false);
+        setError(null);
       } catch (e) {
-        console.error('Error loading from Firebase, using localStorage:', e);
-        // Fallback a localStorage si Firebase falla
-        setUseFirebase(false);
-        try {
-          const saved = localStorage.getItem('completedDays');
-          setCompletedDays(saved ? JSON.parse(saved) : {});
-        } catch (localError) {
-          console.error('Error loading from localStorage:', localError);
-        }
+        console.error('❌ Error al cargar desde Firebase:', e);
+        console.error('Detalles del error:', e.code, e.message);
+        setError({
+          message: 'No se pudo conectar a Firebase',
+          details: e.message || 'Verifica tu conexión a internet y las reglas de Firestore'
+        });
         setIsLoading(false);
       }
     };
@@ -147,26 +149,24 @@ function App() {
 
   // Guardar en Firestore cuando cambien los días completados
   useEffect(() => {
-    if (isLoading) return; // No guardar durante la carga inicial
+    if (isLoading || error) return; // No guardar si hay error o está cargando
 
     const saveData = async () => {
       try {
-        if (useFirebase) {
-          const docRef = doc(db, 'completedDays', 'user_default');
-          await setDoc(docRef, { days: completedDays });
-          console.log('Datos guardados en Firebase');
-        }
-        // Siempre guardar en localStorage como backup
-        localStorage.setItem('completedDays', JSON.stringify(completedDays));
+        const docRef = doc(db, 'completedDays', 'user_default');
+        await setDoc(docRef, { days: completedDays });
+        console.log('✅ Datos guardados en Firebase');
       } catch (e) {
-        console.error('Error saving to Firebase, saved to localStorage:', e);
-        // Fallback a localStorage
-        localStorage.setItem('completedDays', JSON.stringify(completedDays));
+        console.error('❌ Error al guardar en Firebase:', e);
+        setError({
+          message: 'No se pudo guardar en Firebase',
+          details: e.message
+        });
       }
     };
 
     saveData();
-  }, [completedDays, isLoading, useFirebase]);
+  }, [completedDays, isLoading, error]);
 
   // Funciones auxiliares para manejo de fechas
   const formatDate = (date) => {
@@ -474,6 +474,49 @@ function App() {
     setCurrentScreen('Calendar');
     setSelectedDate(null);
   };
+
+  // Pantalla de error
+  if (error) {
+    return (
+      <div className="app">
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          flexDirection: 'column',
+          gap: '20px',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '48px' }}>⚠️</div>
+          <h2 style={{ color: '#ff6b35' }}>Error de Conexión</h2>
+          <p style={{ color: '#fff', maxWidth: '400px' }}>
+            No se pudo conectar a Firebase. Por favor verifica tu conexión a internet.
+          </p>
+          <p style={{ color: '#888', fontSize: '14px', maxWidth: '400px' }}>
+            {error.details}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{
+              backgroundColor: '#ff6b35',
+              color: '#fff',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              marginTop: '20px'
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Pantalla de carga
   if (isLoading) {
