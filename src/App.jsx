@@ -430,7 +430,7 @@ function App() {
     return (
       <div className="app">
         <header className="header">
-          <h1 className="title">Mi Calendario</h1>
+          <h1 className="title">Mi Entreno</h1>
           <p className="subtitle">Selecciona un día para ver tu rutina</p>
         </header>
 
