@@ -1,0 +1,33 @@
+name: Telegram Notifications
+
+on:
+  schedule:
+    # Horarios: 9:00, 10:30, 12:00, 13:30, 15:00, 16:00 (UTC-3 = Argentina)
+    # Convertido a UTC: 12:00, 13:30, 15:00, 16:30, 18:00, 19:00
+    - cron: '0 12 * * *'   # 9:00 AM Argentina
+    - cron: '30 13 * * *'  # 10:30 AM Argentina
+    - cron: '0 15 * * *'   # 12:00 PM Argentina
+    - cron: '30 16 * * *'  # 1:30 PM Argentina
+    - cron: '0 18 * * *'   # 3:00 PM Argentina
+    - cron: '0 19 * * *'   # 4:00 PM Argentina
+  workflow_dispatch: # Permite ejecutar manualmente para probar
+
+jobs:
+  send-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      - name: Send Telegram notification
+        run: |
+          node .github/scripts/send-telegram-notification.js
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
