@@ -219,22 +219,19 @@ const getArgentinaHour = () => {
 
 // Enviar mensaje a Telegram
 const sendMessage = (message) => {
-  console.log(`📤 Preparando mensaje para enviar...`);
-  console.log(`Mensaje recibido en sendMessage: "${message}"`);
-  console.log(`CHAT_ID: ${CHAT_ID}`);
-  console.log(`BOT_TOKEN existe: ${!!BOT_TOKEN}`);
-  
   const payload = {
-    chat_id: CHAT_ID,
+    chat_id: parseInt(CHAT_ID), // Convertir a número
     text: message
   };
   
-  console.log(`Payload antes de stringify:`, payload);
-  
   const data = JSON.stringify(payload);
+  const dataBuffer = Buffer.from(data, 'utf8');
   
-  console.log(`Data después de stringify: ${data}`);
-  console.log(`Longitud del data: ${data.length}`);
+  console.log(`📤 Enviando a Telegram...`);
+  console.log(`Mensaje: "${message}"`);
+  console.log(`Payload:`, payload);
+  console.log(`Data: ${data}`);
+  console.log(`Buffer length: ${dataBuffer.length} bytes`);
 
   const options = {
     hostname: 'api.telegram.org',
@@ -242,8 +239,8 @@ const sendMessage = (message) => {
     path: `/bot${BOT_TOKEN}/sendMessage`,
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': data.length
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Length': dataBuffer.length
     }
   };
 
@@ -271,7 +268,7 @@ const sendMessage = (message) => {
       reject(error);
     });
 
-    req.write(data);
+    req.write(dataBuffer);
     req.end();
   });
 };
