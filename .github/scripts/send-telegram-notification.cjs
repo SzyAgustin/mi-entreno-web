@@ -219,10 +219,22 @@ const getArgentinaHour = () => {
 
 // Enviar mensaje a Telegram
 const sendMessage = (message) => {
-  const data = JSON.stringify({
+  console.log(`📤 Preparando mensaje para enviar...`);
+  console.log(`Mensaje recibido en sendMessage: "${message}"`);
+  console.log(`CHAT_ID: ${CHAT_ID}`);
+  console.log(`BOT_TOKEN existe: ${!!BOT_TOKEN}`);
+  
+  const payload = {
     chat_id: CHAT_ID,
     text: message
-  });
+  };
+  
+  console.log(`Payload antes de stringify:`, payload);
+  
+  const data = JSON.stringify(payload);
+  
+  console.log(`Data después de stringify: ${data}`);
+  console.log(`Longitud del data: ${data.length}`);
 
   const options = {
     hostname: 'api.telegram.org',
