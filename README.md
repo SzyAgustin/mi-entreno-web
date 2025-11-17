@@ -11,12 +11,17 @@ Aplicación web para gestionar y hacer seguimiento de tu rutina de entrenamiento
 - ✅ Sincronización en la nube con Firebase
 - ✅ Progreso mensual visual
 - ✅ Diseño responsive y moderno
+- ✅ Notificaciones automáticas de Telegram al completar días
+- ✅ Frases motivacionales diarias por Telegram
 
 ## 🛠️ Tecnologías
 
 - **React** + **Vite** - Framework y tooling
 - **Firebase Firestore** - Base de datos en tiempo real
+- **Firebase Cloud Functions** - Notificaciones automáticas
+- **Telegram Bot API** - Notificaciones y motivación
 - **GitHub Pages** - Hosting
+- **GitHub Actions** - CI/CD y notificaciones programadas
 - **CSS Modules** - Estilos
 
 ## 📦 Instalación Local
@@ -44,6 +49,8 @@ Sigue las instrucciones en [FIREBASE_SETUP.md](FIREBASE_SETUP.md) para:
 - Crear un proyecto en Firebase
 - Configurar Firestore
 - Obtener las credenciales
+
+Para las notificaciones de Telegram, sigue [FUNCTIONS_SETUP.md](FUNCTIONS_SETUP.md)
 
 4. **Crear archivo .env**
 
