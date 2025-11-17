@@ -196,6 +196,7 @@ function App() {
         { name: 'Apertura inclinada', times: 1, baseReps: 10, baseWeight: 10 },
         { name: 'Tríceps polea', times: 1, baseReps: 10, baseWeight: 15 },
         { name: 'Tríceps arriba cabeza', times: 1, baseReps: 10, baseWeight: 6 },
+        { name: 'Triceps acostado', times: 1, baseReps: 10, baseWeight: 6 },
       ]
     },
     2: { // Martes
@@ -254,16 +255,8 @@ function App() {
 
   // Función para calcular el número de semana en el ciclo
   const getWeekInCycle = (dateString) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    let daysUntilMonday = (1 - today.getDay() + 7) % 7;
-    if (daysUntilMonday === 0 && today.getDay() !== 1) {
-      daysUntilMonday = 7;
-    }
-    
-    const startMonday = new Date(today);
-    startMonday.setDate(today.getDate() + daysUntilMonday);
+    // Fecha fija de inicio: lunes 17 de noviembre de 2025
+    const startMonday = new Date(2025, 10, 17); // Mes 10 = noviembre (0-indexed)
     startMonday.setHours(0, 0, 0, 0);
     
     const targetDate = parseDate(dateString);
@@ -281,16 +274,8 @@ function App() {
 
   // Función para calcular la semana absoluta
   const getAbsoluteWeek = (dateString) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    let daysUntilMonday = (1 - today.getDay() + 7) % 7;
-    if (daysUntilMonday === 0 && today.getDay() !== 1) {
-      daysUntilMonday = 7;
-    }
-    
-    const startMonday = new Date(today);
-    startMonday.setDate(today.getDate() + daysUntilMonday);
+    // Fecha fija de inicio: lunes 17 de noviembre de 2025
+    const startMonday = new Date(2025, 10, 17); // Mes 10 = noviembre (0-indexed)
     startMonday.setHours(0, 0, 0, 0);
     
     const targetDate = parseDate(dateString);
@@ -381,12 +366,9 @@ function App() {
   // Obtener todos los días de entrenamiento
   const getTrainingDays = () => {
     const days = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
-    const daysUntilMonday = (8 - today.getDay()) % 7 || 7;
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilMonday);
+    // Fecha fija de inicio: lunes 17 de noviembre de 2025
+    const nextMonday = new Date(2025, 10, 17); // Mes 10 = noviembre (0-indexed)
     nextMonday.setHours(0, 0, 0, 0);
     
     const julyEnd = new Date(2026, 6, 31);
