@@ -1,7 +1,140 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+// Componente de Tarjeta de Ejercicio con Long Press
+const ExerciseCard = ({ exercise, index, color, onLongPress, onWeightLongPress }) => {
+  const [isPressingName, setIsPressingName] = useState(false);
+  const [isPressingWeight, setIsPressingWeight] = useState(false);
+  const nameLongPressTimer = useRef(null);
+  const weightLongPressTimer = useRef(null);
+
+  // Handlers para el nombre
+  const handleNameTouchStart = () => {
+    setIsPressingName(true);
+    nameLongPressTimer.current = setTimeout(() => {
+      onLongPress(exercise, index);
+      setIsPressingName(false);
+    }, 800);
+  };
+
+  const handleNameTouchEnd = () => {
+    setIsPressingName(false);
+    if (nameLongPressTimer.current) {
+      clearTimeout(nameLongPressTimer.current);
+    }
+  };
+
+  const handleNameMouseDown = () => {
+    setIsPressingName(true);
+    nameLongPressTimer.current = setTimeout(() => {
+      onLongPress(exercise, index);
+      setIsPressingName(false);
+    }, 800);
+  };
+
+  const handleNameMouseUp = () => {
+    setIsPressingName(false);
+    if (nameLongPressTimer.current) {
+      clearTimeout(nameLongPressTimer.current);
+    }
+  };
+
+  const handleNameMouseLeave = () => {
+    setIsPressingName(false);
+    if (nameLongPressTimer.current) {
+      clearTimeout(nameLongPressTimer.current);
+    }
+  };
+
+  // Handlers para el peso
+  const handleWeightTouchStart = () => {
+    if (exercise.todayWeight === '-' || typeof exercise.todayWeight !== 'number') return;
+    setIsPressingWeight(true);
+    weightLongPressTimer.current = setTimeout(() => {
+      onWeightLongPress(exercise, index);
+      setIsPressingWeight(false);
+    }, 800);
+  };
+
+  const handleWeightTouchEnd = () => {
+    setIsPressingWeight(false);
+    if (weightLongPressTimer.current) {
+      clearTimeout(weightLongPressTimer.current);
+    }
+  };
+
+  const handleWeightMouseDown = () => {
+    if (exercise.todayWeight === '-' || typeof exercise.todayWeight !== 'number') return;
+    setIsPressingWeight(true);
+    weightLongPressTimer.current = setTimeout(() => {
+      onWeightLongPress(exercise, index);
+      setIsPressingWeight(false);
+    }, 800);
+  };
+
+  const handleWeightMouseUp = () => {
+    setIsPressingWeight(false);
+    if (weightLongPressTimer.current) {
+      clearTimeout(weightLongPressTimer.current);
+    }
+  };
+
+  const handleWeightMouseLeave = () => {
+    setIsPressingWeight(false);
+    if (weightLongPressTimer.current) {
+      clearTimeout(weightLongPressTimer.current);
+    }
+  };
+
+  return (
+    <div className="exercise-card" style={{ borderColor: color }}>
+      <h3 
+        className={`exercise-name ${isPressingName ? 'pressing' : ''}`}
+        onTouchStart={handleNameTouchStart}
+        onTouchEnd={handleNameTouchEnd}
+        onMouseDown={handleNameMouseDown}
+        onMouseUp={handleNameMouseUp}
+        onMouseLeave={handleNameMouseLeave}
+      >
+        {exercise.name}
+      </h3>
+      
+      <div className="exercise-details">
+        <div className="detail-item">
+          <span className="detail-label">Veces</span>
+          <span className="detail-value">{exercise.times}</span>
+        </div>
+        
+        <div className="detail-item">
+          <span className="detail-label">Reps</span>
+          <span className="detail-value">{exercise.reps}</span>
+        </div>
+        
+        <div className="detail-item">
+          <span className="detail-label">Último Peso</span>
+          <span className="detail-value">{exercise.lastWeight}</span>
+        </div>
+        
+        <div className="detail-item">
+          <span className="detail-label">Peso Hoy</span>
+          <span 
+            className={`detail-value-highlight ${isPressingWeight ? 'pressing' : ''} ${typeof exercise.todayWeight === 'number' ? 'editable' : ''}`}
+            style={{ color: color }}
+            onTouchStart={handleWeightTouchStart}
+            onTouchEnd={handleWeightTouchEnd}
+            onMouseDown={handleWeightMouseDown}
+            onMouseUp={handleWeightMouseUp}
+            onMouseLeave={handleWeightMouseLeave}
+          >
+            {typeof exercise.todayWeight === 'number' ? `${exercise.todayWeight} kg` : exercise.todayWeight}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Componente de Calendario Web
 const WebCalendar = ({ markedDates, onDayPress }) => {
@@ -102,8 +235,16 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('Calendar');
   const [selectedDate, setSelectedDate] = useState(null);
   const [completedDays, setCompletedDays] = useState({});
+  const [customExerciseNames, setCustomExerciseNames] = useState({});
+  const [customWeights, setCustomWeights] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingExercise, setEditingExercise] = useState(null);
+  const [newExerciseName, setNewExerciseName] = useState('');
+  const [editingWeight, setEditingWeight] = useState(null);
+  const [newWeight, setNewWeight] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   // Cargar datos desde Firestore al iniciar
   useEffect(() => {
@@ -125,11 +266,16 @@ function App() {
         ]);
         
         if (docSnap.exists()) {
-          setCompletedDays(docSnap.data().days || {});
+          const data = docSnap.data();
+          setCompletedDays(data.days || {});
+          setCustomExerciseNames(data.customExerciseNames || {});
+          setCustomWeights(data.customWeights || {});
           console.log('✅ Datos cargados desde Firebase exitosamente');
         } else {
           console.log('📭 No hay datos en Firebase, iniciando con datos vacíos');
           setCompletedDays({});
+          setCustomExerciseNames({});
+          setCustomWeights({});
         }
         setIsLoading(false);
         setError(null);
@@ -147,14 +293,18 @@ function App() {
     loadData();
   }, []);
 
-  // Guardar en Firestore cuando cambien los días completados
+  // Guardar en Firestore cuando cambien los días completados, nombres o pesos personalizados
   useEffect(() => {
     if (isLoading || error) return; // No guardar si hay error o está cargando
 
     const saveData = async () => {
       try {
         const docRef = doc(db, 'completedDays', 'user_default');
-        await setDoc(docRef, { days: completedDays });
+        await setDoc(docRef, { 
+          days: completedDays,
+          customExerciseNames: customExerciseNames,
+          customWeights: customWeights
+        });
         console.log('✅ Datos guardados en Firebase');
       } catch (e) {
         console.error('❌ Error al guardar en Firebase:', e);
@@ -166,7 +316,7 @@ function App() {
     };
 
     saveData();
-  }, [completedDays, isLoading, error]);
+  }, [completedDays, customExerciseNames, customWeights, isLoading, error]);
 
   // Funciones auxiliares para manejo de fechas
   const formatDate = (date) => {
@@ -299,8 +449,30 @@ function App() {
     }
   };
 
+  // Obtener peso base personalizado para un ejercicio y fecha
+  const getCustomBaseWeight = (dayOfWeek, originalName, dateString, customWeightsOverride = null) => {
+    const key = `${dayOfWeek}-${originalName}`;
+    const weightsSource = customWeightsOverride || customWeights;
+    const customWeightEntries = weightsSource[key] || [];
+    
+    // Filtrar los pesos que se aplicaron antes o en la fecha especificada
+    const applicableWeights = customWeightEntries.filter(item => item.fromDate <= dateString);
+    
+    if (applicableWeights.length > 0) {
+      // Retornar el más reciente
+      const sortedWeights = applicableWeights.sort((a, b) => b.fromDate.localeCompare(a.fromDate));
+      return {
+        customWeight: sortedWeights[0].weight,
+        fromDate: sortedWeights[0].fromDate,
+        fromAbsoluteWeek: sortedWeights[0].absoluteWeek
+      };
+    }
+    
+    return null;
+  };
+
   // Calcular peso y reps según la semana
-  const calculateExerciseData = (exercise, weekInCycle, absoluteWeek) => {
+  const calculateExerciseData = (exercise, weekInCycle, absoluteWeek, dateString, dayOfWeek, customWeightsOverride = null) => {
     if (exercise.baseWeight === '-') {
       return {
         reps: exercise.baseReps,
@@ -309,8 +481,23 @@ function App() {
       };
     }
 
-    const completedCycles = Math.floor((absoluteWeek - 1) / 5);
-    const adjustedBaseWeight = exercise.baseWeight + (completedCycles * 2);
+    // Verificar si hay un peso personalizado
+    const customWeightData = getCustomBaseWeight(dayOfWeek, exercise.name, dateString, customWeightsOverride);
+    
+    let baseWeightToUse = exercise.baseWeight;
+    let adjustedBaseWeight;
+    
+    if (customWeightData) {
+      // Usar el peso personalizado como nuevo peso base desde esa fecha
+      const weeksSinceCustom = absoluteWeek - customWeightData.fromAbsoluteWeek;
+      const cyclesSinceCustom = Math.floor(weeksSinceCustom / 5);
+      baseWeightToUse = customWeightData.customWeight;
+      adjustedBaseWeight = baseWeightToUse + (cyclesSinceCustom * 2);
+    } else {
+      // Usar la progresión normal desde el peso base original
+      const completedCycles = Math.floor((absoluteWeek - 1) / 5);
+      adjustedBaseWeight = baseWeightToUse + (completedCycles * 2);
+    }
 
     let reps, todayWeight, lastWeight;
 
@@ -327,7 +514,16 @@ function App() {
         if (absoluteWeek === 1) {
           lastWeight = 'X';
         } else {
-          const previousCycleBaseWeight = exercise.baseWeight + ((completedCycles - 1) * 2);
+          // Calcular el peso base del ciclo anterior
+          let previousCycleBaseWeight;
+          if (customWeightData && absoluteWeek - 1 >= customWeightData.fromAbsoluteWeek) {
+            const weeksSinceCustom = (absoluteWeek - 1) - customWeightData.fromAbsoluteWeek;
+            const cyclesSinceCustom = Math.floor(weeksSinceCustom / 5);
+            previousCycleBaseWeight = customWeightData.customWeight + (cyclesSinceCustom * 2);
+          } else {
+            const completedCycles = Math.floor((absoluteWeek - 1 - 1) / 5);
+            previousCycleBaseWeight = exercise.baseWeight + (completedCycles * 2);
+          }
           lastWeight = previousCycleBaseWeight + ((4 - 1) * 2);
         }
       } else {
@@ -338,17 +534,58 @@ function App() {
     return { reps, lastWeight, todayWeight };
   };
 
+  // Obtener nombre personalizado de ejercicio o nombre por defecto
+  const getExerciseName = (dayOfWeek, originalName, fromDate, customNamesOverride = null) => {
+    // Buscar el nombre personalizado más reciente para ese ejercicio y día de la semana
+    const key = `${dayOfWeek}-${originalName}`;
+    const namesSource = customNamesOverride || customExerciseNames;
+    const customNames = namesSource[key] || [];
+    
+    console.log('🔍 Buscando nombre para:', {
+      key,
+      fromDate,
+      availableNames: customNames,
+      usingOverride: customNamesOverride !== null
+    });
+    
+    // Filtrar los nombres que se aplicaron antes o en la fecha especificada
+    const applicableNames = customNames.filter(item => item.fromDate <= fromDate);
+    
+    console.log('✅ Nombres aplicables:', applicableNames);
+    
+    // Si hay nombres aplicables, retornar el más reciente
+    if (applicableNames.length > 0) {
+      const sortedNames = applicableNames.sort((a, b) => b.fromDate.localeCompare(a.fromDate));
+      const selectedName = sortedNames[0].customName;
+      console.log('📝 Nombre seleccionado:', selectedName);
+      return selectedName;
+    }
+    
+    console.log('📝 Usando nombre original:', originalName);
+    return originalName;
+  };
+
   // Generar datos de entrenamiento para una fecha
-  const getTrainingDataForDate = (dateString, dayOfWeek) => {
+  const getTrainingDataForDate = (dateString, dayOfWeek, customNamesOverride = null, customWeightsOverride = null) => {
     const weekInCycle = getWeekInCycle(dateString);
     const absoluteWeek = getAbsoluteWeek(dateString);
     const baseData = baseTrainingData[dayOfWeek];
     
     const exercises = baseData.exercises.map(exercise => {
-      const { reps, lastWeight, todayWeight } = calculateExerciseData(exercise, weekInCycle, absoluteWeek);
+      const { reps, lastWeight, todayWeight } = calculateExerciseData(
+        exercise, 
+        weekInCycle, 
+        absoluteWeek, 
+        dateString, 
+        dayOfWeek, 
+        customWeightsOverride
+      );
       const times = calculateTimes(absoluteWeek);
+      const customName = getExerciseName(dayOfWeek, exercise.name, dateString, customNamesOverride);
+      
       return {
-        name: exercise.name,
+        name: customName,
+        originalName: exercise.name,
         times: times,
         reps: reps,
         lastWeight: lastWeight,
@@ -457,6 +694,165 @@ function App() {
   const goBack = () => {
     setCurrentScreen('Calendar');
     setSelectedDate(null);
+  };
+
+  // Manejar long press en nombre de ejercicio
+  const handleLongPress = (exercise, index) => {
+    setEditingExercise({ 
+      exercise, 
+      index,
+      dayOfWeek: selectedDate?.dayOfWeek,
+      date: selectedDate?.date
+    });
+    setNewExerciseName(exercise.name);
+  };
+
+  // Mostrar mensaje toast
+  const showToastMessage = (message) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 2500);
+  };
+
+  // Guardar nombre personalizado de ejercicio
+  const saveCustomExerciseName = () => {
+    if (!editingExercise || !newExerciseName.trim()) {
+      setEditingExercise(null);
+      return;
+    }
+
+    const { exercise, dayOfWeek, date } = editingExercise;
+    const originalName = exercise.originalName || exercise.name;
+    const key = `${dayOfWeek}-${originalName}`;
+
+    // Obtener las entradas existentes y filtrar cualquier entrada con la misma fecha
+    const existingNames = customExerciseNames[key] || [];
+    const filteredNames = existingNames.filter(item => item.fromDate !== date);
+
+    // Crear el objeto actualizado con el nuevo nombre personalizado
+    const updatedCustomNames = {
+      ...customExerciseNames,
+      [key]: [
+        ...filteredNames,
+        {
+          customName: newExerciseName.trim(),
+          fromDate: date
+        }
+      ]
+    };
+
+    console.log('💾 Guardando nombre personalizado:', {
+      key,
+      date,
+      newName: newExerciseName.trim(),
+      allNames: updatedCustomNames[key]
+    });
+
+    // Actualizar el estado
+    setCustomExerciseNames(updatedCustomNames);
+
+    // Recargar los datos del día actual con los nombres actualizados INMEDIATAMENTE
+    const trainingData = getTrainingDataForDate(date, dayOfWeek, updatedCustomNames);
+    setSelectedDate({
+      date: date,
+      dayOfWeek: dayOfWeek,
+      data: trainingData
+    });
+
+    // Cerrar el modal y mostrar confirmación
+    setEditingExercise(null);
+    setNewExerciseName('');
+    showToastMessage('✓ Nombre actualizado correctamente');
+  };
+
+  // Cancelar edición
+  const cancelEdit = () => {
+    setEditingExercise(null);
+    setNewExerciseName('');
+  };
+
+  // Manejar long press en peso
+  const handleWeightLongPress = (exercise, index) => {
+    // Solo permitir edición si el peso no es '-'
+    if (exercise.todayWeight === '-' || typeof exercise.todayWeight !== 'number') {
+      return;
+    }
+    
+    setEditingWeight({ 
+      exercise, 
+      index,
+      dayOfWeek: selectedDate?.dayOfWeek,
+      date: selectedDate?.date
+    });
+    setNewWeight(exercise.todayWeight.toString());
+  };
+
+  // Guardar peso personalizado
+  const saveCustomWeight = () => {
+    if (!editingWeight || !newWeight.trim()) {
+      setEditingWeight(null);
+      return;
+    }
+
+    const weightValue = parseFloat(newWeight);
+    if (isNaN(weightValue) || weightValue <= 0) {
+      showToastMessage('⚠️ Ingresa un peso válido');
+      return;
+    }
+
+    const { exercise, dayOfWeek, date } = editingWeight;
+    const originalName = exercise.originalName || exercise.name;
+    const key = `${dayOfWeek}-${originalName}`;
+    const absoluteWeek = getAbsoluteWeek(date);
+
+    // Filtrar entradas existentes con la misma fecha para evitar duplicados
+    const existingWeights = customWeights[key] || [];
+    const filteredWeights = existingWeights.filter(item => item.fromDate !== date);
+
+    // Crear el objeto actualizado con el nuevo peso personalizado
+    const updatedCustomWeights = {
+      ...customWeights,
+      [key]: [
+        ...filteredWeights,
+        {
+          weight: weightValue,
+          fromDate: date,
+          absoluteWeek: absoluteWeek
+        }
+      ]
+    };
+
+    console.log('💪 Guardando peso personalizado:', {
+      key,
+      date,
+      weight: weightValue,
+      absoluteWeek,
+      allWeights: updatedCustomWeights[key]
+    });
+
+    // Actualizar el estado
+    setCustomWeights(updatedCustomWeights);
+
+    // Recargar los datos del día actual con los pesos actualizados INMEDIATAMENTE
+    const trainingData = getTrainingDataForDate(date, dayOfWeek, customExerciseNames, updatedCustomWeights);
+    setSelectedDate({
+      date: date,
+      dayOfWeek: dayOfWeek,
+      data: trainingData
+    });
+
+    // Cerrar el modal y mostrar confirmación
+    setEditingWeight(null);
+    setNewWeight('');
+    showToastMessage('✓ Peso actualizado correctamente');
+  };
+
+  // Cancelar edición de peso
+  const cancelWeightEdit = () => {
+    setEditingWeight(null);
+    setNewWeight('');
   };
 
   // Manejar el botón "atrás" del navegador
@@ -634,36 +1030,88 @@ function App() {
       <div className="scroll-view">
         <div className="exercises-list">
           {currentData?.exercises.map((exercise, index) => (
-            <div key={index} className="exercise-card" style={{ borderColor: currentData.color }}>
-              <h3 className="exercise-name">{exercise.name}</h3>
-              
-              <div className="exercise-details">
-                <div className="detail-item">
-                  <span className="detail-label">Veces</span>
-                  <span className="detail-value">{exercise.times}</span>
-                </div>
-                
-                <div className="detail-item">
-                  <span className="detail-label">Reps</span>
-                  <span className="detail-value">{exercise.reps}</span>
-                </div>
-                
-                <div className="detail-item">
-                  <span className="detail-label">Último Peso</span>
-                  <span className="detail-value">{exercise.lastWeight}</span>
-                </div>
-                
-                <div className="detail-item">
-                  <span className="detail-label">Peso Hoy</span>
-                  <span className="detail-value-highlight" style={{ color: currentData.color }}>
-                    {typeof exercise.todayWeight === 'number' ? `${exercise.todayWeight} kg` : exercise.todayWeight}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ExerciseCard 
+              key={index} 
+              exercise={exercise} 
+              index={index}
+              color={currentData.color}
+              onLongPress={handleLongPress}
+              onWeightLongPress={handleWeightLongPress}
+            />
           ))}
         </div>
       </div>
+
+      {/* Modal de edición de nombre de ejercicio */}
+      {editingExercise && (
+        <div className="modal-overlay" onClick={cancelEdit}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Editar nombre del ejercicio</h3>
+            <p className="modal-subtitle">Los cambios se aplicarán desde este día en adelante</p>
+            
+            <input
+              type="text"
+              className="modal-input"
+              value={newExerciseName}
+              onChange={(e) => setNewExerciseName(e.target.value)}
+              placeholder="Nombre del ejercicio"
+              autoFocus
+            />
+            
+            <div className="modal-buttons">
+              <button className="modal-button cancel" onClick={cancelEdit}>
+                Cancelar
+              </button>
+              <button 
+                className="modal-button save" 
+                onClick={saveCustomExerciseName}
+                style={{ backgroundColor: currentData?.color }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edición de peso */}
+      {editingWeight && (
+        <div className="modal-overlay" onClick={cancelWeightEdit}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Editar peso del ejercicio</h3>
+            <p className="modal-subtitle">
+              Los pesos se recalcularán desde este día en adelante siguiendo la progresión
+            </p>
+            
+            <div className="weight-input-container">
+              <input
+                type="number"
+                className="modal-input weight-input"
+                value={newWeight}
+                onChange={(e) => setNewWeight(e.target.value)}
+                placeholder="Peso en kg"
+                step="0.5"
+                min="0"
+                autoFocus
+              />
+              <span className="weight-unit">kg</span>
+            </div>
+            
+            <div className="modal-buttons">
+              <button className="modal-button cancel" onClick={cancelWeightEdit}>
+                Cancelar
+              </button>
+              <button 
+                className="modal-button save" 
+                onClick={saveCustomWeight}
+                style={{ backgroundColor: currentData?.color }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="footer" style={{ borderTopColor: currentData?.color }}>
         <button 
@@ -673,6 +1121,13 @@ function App() {
           {isCompleted ? '✓ Completado' : '✓ Marcar como Completado'}
         </button>
       </footer>
+
+      {/* Toast de confirmación */}
+      {showToast && (
+        <div className="toast">
+          {toastMessage}
+        </div>
+      )}
       </div>
   );
 }
